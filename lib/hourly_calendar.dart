@@ -59,29 +59,138 @@ class HourlyCalendarController<T> {
 }
 
 class HourlyCalendar<T> extends StatelessWidget {
+  /// [BoxDecoration] main container decoration
   final BoxDecoration? mainContainerDecoration;
+
+  /// [BoxDecoration] container decoration each hour
   final BoxDecoration? hourContainerDecoration;
+
+  /// [TextStyle] text style each hour
   final TextStyle? hourTextStyle;
+
+  /// [TextStyle] footer list text style
   final TextStyle? bottomListTitleStyle;
+
+  /// [TextStyle] footer list duration style
   final TextStyle? bottomListHourStyle;
+
+  /// [HourlyCalendarController] calendar controller
   final HourlyCalendarController<T> controller;
+
+  /// [bool] hide header if is `true`
   final bool hideHeader;
+
+  /// [bool] hide footer if is `true`
   final bool hideFooter;
+
+  /// [double] header height
   final double headerHeight;
+
+  /// [double] hours width
   final double hoursWidth;
+
+  /// [TextStyle] header text style
   final TextStyle? headerDateTextStyle;
+
+  /// [String] header date text date format
   final String headerDateFormat;
+
+  /// build each hour
+  /// ```dart
+  /// (context,hour) =>  Container(
+  ///    padding: const EdgeInsets.all(8),
+  ///    decoration: hourContainerDecoration ??
+  ///        BoxDecoration(
+  ///          border: Border(
+  ///            right: BorderSide(color: Theme.of(context).disabledColor.withOpacity(0.5)),
+  ///          ),
+  ///        ),
+  ///    child: Center(
+  ///      child: Text(
+  ///        hour.text,
+  ///        style: hourTextStyle ??
+  ///            Theme.of(context).textTheme.bodyLarge!.copyWith(
+  ///                  fontSize: 15,
+  ///                  color: hour.isShift
+  ///                      ? Theme.of(context).disabledColor.withOpacity(0.3)
+  ///                      : Theme.of(context).disabledColor,
+  ///                ),
+  ///      ),
+  ///    ),
+  ///  )
+  /// ```
   final Widget Function(BuildContext context, CalendarHour hour)? hourBuilder;
+
+  /// item builder
+  ///
+  /// ```dart
+  ///
+  ///(context,item,controller,selectedId) => InkWell(
+  ///   onLongPress: () {
+  ///     controller.setSelected(item.id);
+  ///     if (onSelected != null) {
+  ///       onSelected!(item, controller);
+  ///     }
+  ///   },
+  ///   onTap: () => controller.setSelected(item.id),
+  ///   child: Container(
+  ///     // width: 100,
+  ///     height: mainContainerHeight,
+  ///     decoration: BoxDecoration(
+  ///       color: selectedId == item.id ? item.color : item.color.withAlpha(150),
+  ///       borderRadius: BorderRadius.circular(5),
+  ///     ),
+  ///     child: Center(
+  ///       child: RotatedBox(
+  ///         quarterTurns: 1,
+  ///         child: FittedBox(
+  ///           child: Text(
+  ///             item.title,
+  ///             style: hourTextStyle ??
+  ///                 Theme.of(context).textTheme.bodyLarge!.copyWith(
+  ///                       fontSize: 15,
+  ///                       color: Colors.white,
+  ///                     ),
+  ///           ),
+  ///         ),
+  ///       ),
+  ///     ),
+  ///   ),
+  /// );
+  /// ```
   final Widget Function(
           BuildContext context, CalendarData<T> item, HourlyCalendarController<T> controller, String? selectedId)?
       itemBuilder;
+
+  ///
+  ///```dart
+  ///(context,item,controller,selectedId)=>Row(children:[
+  /// Text(item.startTime),
+  /// Text(item.endTime),
+  ///])
+  ///```
   final Widget Function(
           BuildContext context, CalendarData<T> item, HourlyCalendarController<T> controller, String? selectedId)?
       bottomItemListBuilder;
   final void Function(CalendarData<T> selectedItem, HourlyCalendarController<T> controller)? onSelected;
+
+  /// refresh data
   final Future<void> Function()? onRefresh;
-  final Widget Function(DateTime date)? headerBuilder;
-  final Axis axis;
+
+  /// header builder
+  /// ```dart
+  /// (date,controller)=>Row(
+  ///   children:[
+  ///   Button(onPress:controller.previousDate),
+  ///   Text(date.toString().format("HH:mm")),
+  ///   Button(onPress:controller.nextDate)
+  /// ]
+  /// )
+  ///
+  /// ```
+
+  final Widget Function(DateTime date, HourlyCalendarController<T> controller)? headerBuilder;
+
   const HourlyCalendar({
     super.key,
     required this.controller,
@@ -102,7 +211,6 @@ class HourlyCalendar<T> extends StatelessWidget {
     this.headerHeight = 40,
     this.hoursWidth = 75,
     this.hourContainerDecoration,
-    this.axis = Axis.vertical,
   });
 
   @override
@@ -115,7 +223,6 @@ class HourlyCalendar<T> extends StatelessWidget {
             onRefresh: onRefresh ?? () async {},
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
-              scrollDirection: axis,
               controller: controller.mainScrollController,
               child: SizedBox(
                 height: controller.hours.length * controller.oneHourHeight,
@@ -152,7 +259,7 @@ class HourlyCalendar<T> extends StatelessWidget {
           return SizedBox(
             height: headerHeight,
             child: headerBuilder != null
-                ? headerBuilder!(date)
+                ? headerBuilder!(date, controller)
                 : Row(
                     children: [
                       IconButton(onPressed: controller.previousDate, icon: const Icon(Icons.arrow_back)),
@@ -324,9 +431,7 @@ class HourlyCalendar<T> extends StatelessWidget {
           stream: controller.selectedIdStream,
           builder: (context, snapshot) {
             var selectedId = snapshot.data;
-            if (itemBuilder != null) {
-              return Expanded(child: itemBuilder!(context, item, controller, selectedId));
-            }
+
             return Expanded(
               child: Container(
                 // height: double.infinity,
@@ -342,38 +447,40 @@ class HourlyCalendar<T> extends StatelessWidget {
                       // color: item.color.withOpacity(0.1),
                       height: emptyStartContainerHeight,
                     ),
-                    InkWell(
-                      onLongPress: () {
-                        controller.setSelected(item.id);
-                        if (onSelected != null) {
-                          onSelected!(item, controller);
-                        }
-                      },
-                      onTap: () => controller.setSelected(item.id),
-                      child: Container(
-                        // width: 100,
-                        height: mainContainerHeight,
-                        decoration: BoxDecoration(
-                          color: selectedId == item.id ? item.color : item.color.withAlpha(150),
-                          borderRadius: BorderRadius.circular(5),
-                        ),
-                        child: Center(
-                          child: RotatedBox(
-                            quarterTurns: 1,
-                            child: FittedBox(
-                              child: Text(
-                                item.title,
-                                style: hourTextStyle ??
-                                    Theme.of(context).textTheme.bodyLarge!.copyWith(
-                                          fontSize: 15,
-                                          color: Colors.white,
-                                        ),
+                    itemBuilder != null
+                        ? itemBuilder!(context, item, controller, selectedId)
+                        : InkWell(
+                            onLongPress: () {
+                              controller.setSelected(item.id);
+                              if (onSelected != null) {
+                                onSelected!(item, controller);
+                              }
+                            },
+                            onTap: () => controller.setSelected(item.id),
+                            child: Container(
+                              // width: 100,
+                              height: mainContainerHeight,
+                              decoration: BoxDecoration(
+                                color: selectedId == item.id ? item.color : item.color.withAlpha(150),
+                                borderRadius: BorderRadius.circular(5),
+                              ),
+                              child: Center(
+                                child: RotatedBox(
+                                  quarterTurns: 1,
+                                  child: FittedBox(
+                                    child: Text(
+                                      item.title,
+                                      style: hourTextStyle ??
+                                          Theme.of(context).textTheme.bodyLarge!.copyWith(
+                                                fontSize: 15,
+                                                color: Colors.white,
+                                              ),
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ),
-                    ),
                     Container(
                       //color: item.color.withOpacity(0.1),
                       height: emptyEndContainerHeight,
@@ -388,7 +495,7 @@ class HourlyCalendar<T> extends StatelessWidget {
 
   double _findHeight(DateTime start, DateTime end) {
     // var totalDailySecond = 86400;
-    var perSecondHeight = 40 / 3600;
+    var perSecondHeight = controller.oneHourHeight / 3600;
     // 60 saniye 40 ise 1 saniye
     var diff = start.difference(end);
     var totalSecond = diff.inSeconds;
@@ -397,8 +504,6 @@ class HourlyCalendar<T> extends StatelessWidget {
 
   Widget _buildHour(BuildContext context, CalendarHour hour) {
     return Container(
-      height: controller.oneHourHeight,
-      width: hoursWidth,
       padding: const EdgeInsets.all(8),
       decoration: hourContainerDecoration ??
           BoxDecoration(

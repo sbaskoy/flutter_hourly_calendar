@@ -48,7 +48,8 @@ class _MyHomePageState extends State<MyHomePage> {
         data: "event $index",
         color: Color((math.Random().nextDouble() * 0xFFFFFF).toInt()).withOpacity(1.0));
   });
-  late final HourlyCalendarController controller = HourlyCalendarController(items, date: DateTime.now());
+  late final HourlyCalendarController controller =
+      HourlyCalendarController(items, date: DateTime.now(), oneHourHeight: 60);
   @override
   Widget build(BuildContext context) {
     return Scaffold(
